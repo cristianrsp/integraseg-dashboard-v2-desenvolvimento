@@ -17,6 +17,7 @@ export interface SalesResult {
   averageConversionTime: number;
   revenue: number;
   importedAt: string;
+  dataSource?: 'csv' | 'manual';
 }
 
 export interface DashboardFilters {
