@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, Users, Mail, Calendar } from 'lucide-react';
+import { Plus, Trash2, Users, Mail, Calendar, Loader2 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,12 +36,13 @@ import { useSalesData } from '@/hooks/useSalesData';
 import { toast } from 'sonner';
 
 export default function Sellers() {
-  const { sellers, addSeller, deleteSeller } = useSalesData();
+  const { sellers, loading, addSeller, deleteSeller } = useSalesData();
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!name.trim()) {
@@ -54,16 +55,27 @@ export default function Sellers() {
       return;
     }
 
-    addSeller(name.trim(), email.trim());
-    toast.success('Vendedor cadastrado com sucesso!');
-    setName('');
-    setEmail('');
-    setIsOpen(false);
+    setIsSubmitting(true);
+    try {
+      await addSeller(name.trim(), email.trim());
+      toast.success('Vendedor cadastrado com sucesso!');
+      setName('');
+      setEmail('');
+      setIsOpen(false);
+    } catch (error) {
+      toast.error('Erro ao cadastrar vendedor');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleDelete = (id: string, sellerName: string) => {
-    deleteSeller(id);
-    toast.success(`Vendedor ${sellerName} removido`);
+  const handleDelete = async (id: string, sellerName: string) => {
+    try {
+      await deleteSeller(id);
+      toast.success(`Vendedor ${sellerName} removido`);
+    } catch (error) {
+      toast.error('Erro ao remover vendedor');
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -73,6 +85,16 @@ export default function Sellers() {
       year: 'numeric',
     });
   };
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -124,7 +146,10 @@ export default function Sellers() {
                 <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
                   Cancelar
                 </Button>
-                <Button type="submit">Cadastrar</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Cadastrar
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>

@@ -6,7 +6,8 @@ import {
   FileSpreadsheet, 
   FileText,
   History as HistoryIcon,
-  Search
+  Search,
+  Loader2
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -51,9 +52,10 @@ import { exportToExcel, exportToPDF } from '@/utils/exportUtils';
 import { toast } from 'sonner';
 
 export default function History() {
-  const { results, updateResult, deleteResult } = useSalesData();
+  const { results, loading, updateResult, deleteResult } = useSalesData();
   const [searchTerm, setSearchTerm] = useState('');
   const [editingResult, setEditingResult] = useState<SalesResult | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [editForm, setEditForm] = useState({
     opportunities: 0,
     sales: 0,
@@ -90,17 +92,28 @@ export default function History() {
     });
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editingResult) return;
 
-    updateResult(editingResult.id, editForm);
-    toast.success('Registro atualizado com sucesso!');
-    setEditingResult(null);
+    setIsSaving(true);
+    try {
+      await updateResult(editingResult.id, editForm);
+      toast.success('Registro atualizado com sucesso!');
+      setEditingResult(null);
+    } catch (error) {
+      toast.error('Erro ao atualizar registro');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleDelete = (id: string) => {
-    deleteResult(id);
-    toast.success('Registro excluído com sucesso!');
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteResult(id);
+      toast.success('Registro excluído com sucesso!');
+    } catch (error) {
+      toast.error('Erro ao excluir registro');
+    }
   };
 
   const handleExportExcel = () => {
@@ -119,6 +132,16 @@ export default function History() {
     }
     exportToPDF('history-table', 'historico-vendas-integraseg');
   };
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -298,7 +321,8 @@ export default function History() {
             <Button variant="outline" onClick={() => setEditingResult(null)}>
               Cancelar
             </Button>
-            <Button onClick={handleSaveEdit}>
+            <Button onClick={handleSaveEdit} disabled={isSaving}>
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Salvar Alterações
             </Button>
           </DialogFooter>

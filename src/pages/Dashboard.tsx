@@ -5,7 +5,8 @@ import {
   Percent, 
   DollarSign, 
   Clock,
-  Download
+  Download,
+  Loader2
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { MetricCard } from '@/components/dashboard/MetricCard';
@@ -20,13 +21,23 @@ import { DashboardFilters as Filters } from '@/types/sales';
 import { exportToPDF } from '@/utils/exportUtils';
 
 export default function Dashboard() {
-  const { sellers, results, getFilteredResults, getAggregatedMetrics } = useSalesData();
+  const { sellers, results, loading, getFilteredResults, getAggregatedMetrics } = useSalesData();
   
   const [filters, setFilters] = useState<Filters>({
     sellerId: 'all',
     startDate: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0],
   });
+  
+  if (loading) {
+    return (
+      <MainLayout>
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   const filteredResults = useMemo(() => {
     return getFilteredResults(filters.sellerId, filters.startDate, filters.endDate);

@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Upload, FileText, CheckCircle, AlertCircle, Calendar, User, PenLine } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertCircle, Calendar, User, PenLine, Loader2 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,7 +21,7 @@ type Step = 1 | 2 | 3;
 type InputMethod = 'csv' | 'manual' | null;
 
 export default function ImportResults() {
-  const { sellers, addResult } = useSalesData();
+  const { sellers, loading, addResult } = useSalesData();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [currentStep, setCurrentStep] = useState<Step>(1);
@@ -32,6 +32,7 @@ export default function ImportResults() {
   const [revenue, setRevenue] = useState('');
   const [fileName, setFileName] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [inputMethod, setInputMethod] = useState<InputMethod>(null);
 
   // Manual input state
@@ -68,25 +69,33 @@ export default function ImportResults() {
     }
   };
 
-  const handleSubmitCSV = () => {
+  const handleSubmitCSV = async () => {
     if (!selectedSellerData || !parsedData) return;
 
-    addResult({
-      sellerId: selectedSeller,
-      sellerName: selectedSellerData.name,
-      startDate,
-      endDate,
-      opportunities: parsedData.opportunities,
-      sales: parsedData.sales,
-      averageConversionTime: parsedData.averageConversionTime,
-      revenue: parseFloat(revenue) || 0,
-    });
+    setIsSubmitting(true);
+    try {
+      await addResult({
+        sellerId: selectedSeller,
+        sellerName: selectedSellerData.name,
+        startDate,
+        endDate,
+        opportunities: parsedData.opportunities,
+        sales: parsedData.sales,
+        averageConversionTime: parsedData.averageConversionTime,
+        revenue: parseFloat(revenue) || 0,
+        dataSource: 'csv',
+      });
 
-    toast.success('Resultados importados com sucesso!');
-    resetForm();
+      toast.success('Resultados importados com sucesso!');
+      resetForm();
+    } catch (error) {
+      toast.error('Erro ao salvar resultados');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleSubmitManual = () => {
+  const handleSubmitManual = async () => {
     if (!selectedSellerData) return;
 
     const opportunities = parseInt(manualOpportunities) || 0;
@@ -99,19 +108,27 @@ export default function ImportResults() {
       return;
     }
 
-    addResult({
-      sellerId: selectedSeller,
-      sellerName: selectedSellerData.name,
-      startDate,
-      endDate,
-      opportunities,
-      sales,
-      averageConversionTime: conversionTime,
-      revenue: revenueValue,
-    });
+    setIsSubmitting(true);
+    try {
+      await addResult({
+        sellerId: selectedSeller,
+        sellerName: selectedSellerData.name,
+        startDate,
+        endDate,
+        opportunities,
+        sales,
+        averageConversionTime: conversionTime,
+        revenue: revenueValue,
+        dataSource: 'manual',
+      });
 
-    toast.success('Resultados registrados com sucesso!');
-    resetForm();
+      toast.success('Resultados registrados com sucesso!');
+      resetForm();
+    } catch (error) {
+      toast.error('Erro ao salvar resultados');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const resetForm = () => {
@@ -142,6 +159,16 @@ export default function ImportResults() {
     { number: 2, title: 'Período', icon: Calendar },
     { number: 3, title: 'Dados', icon: Upload },
   ];
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -451,9 +478,10 @@ export default function ImportResults() {
                     </Button>
                     <Button 
                       onClick={handleSubmitCSV} 
-                      disabled={!canSubmitCSV}
+                      disabled={!canSubmitCSV || isSubmitting}
                       className="gap-2"
                     >
+                      {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
                       <CheckCircle className="h-4 w-4" />
                       Confirmar Importação
                     </Button>
@@ -541,9 +569,10 @@ export default function ImportResults() {
                     </Button>
                     <Button 
                       onClick={handleSubmitManual} 
-                      disabled={!canSubmitManual}
+                      disabled={!canSubmitManual || isSubmitting}
                       className="gap-2"
                     >
+                      {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
                       <CheckCircle className="h-4 w-4" />
                       Confirmar Dados
                     </Button>
