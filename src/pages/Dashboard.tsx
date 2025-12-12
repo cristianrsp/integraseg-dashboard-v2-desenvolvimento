@@ -28,16 +28,6 @@ export default function Dashboard() {
     startDate: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0],
   });
-  
-  if (loading) {
-    return (
-      <MainLayout>
-        <div className="flex h-64 items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </MainLayout>
-    );
-  }
 
   const filteredResults = useMemo(() => {
     return getFilteredResults(filters.sellerId, filters.startDate, filters.endDate);
@@ -119,6 +109,17 @@ export default function Dashboard() {
   const handleExportPDF = () => {
     exportToPDF('dashboard-content', 'dashboard-integraseg');
   };
+
+  // Loading state - must be AFTER all hooks
+  if (loading) {
+    return (
+      <MainLayout>
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
