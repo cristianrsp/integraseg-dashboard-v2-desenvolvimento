@@ -1,35 +1,24 @@
 export interface Seller {
   id: string;
   name: string;
-  email: string;
   createdAt: string;
 }
 
-export interface SalesResult {
+export interface SalesRecord {
   id: string;
   sellerId: string;
   sellerName: string;
-  startDate: string;
-  endDate: string;
-  opportunities: number;
-  sales: number;
-  conversionRate: number;
-  averageConversionTime: number;
-  revenue: number;
-  importedAt: string;
-  dataSource?: 'csv' | 'manual';
+  dataResultado: string;
+  tipoLead: 'interno' | 'externo';
+  oportunidades: number | null;
+  vendas: number;
+  receita: number;
+  tempoMedio: number | null;
+  createdAt: string;
 }
 
 export interface DashboardFilters {
   sellerId: string | 'all';
   startDate: string;
   endDate: string;
-}
-
-export interface MetricCard {
-  title: string;
-  value: string | number;
-  change?: number;
-  icon: React.ReactNode;
-  trend?: 'up' | 'down' | 'neutral';
 }

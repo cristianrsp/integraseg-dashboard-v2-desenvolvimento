@@ -1,13 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Seller, SalesResult } from '@/types/sales';
+import { Seller, SalesRecord } from '@/types/sales';
 
 export function useSalesData() {
   const [sellers, setSellers] = useState<Seller[]>([]);
-  const [results, setResults] = useState<SalesResult[]>([]);
+  const [records, setRecords] = useState<SalesRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch sellers from Supabase
   const fetchSellers = useCallback(async () => {
     const { data, error } = await supabase
       .from('vendedores')
@@ -19,254 +18,142 @@ export function useSalesData() {
       return;
     }
 
-    const mappedSellers: Seller[] = (data || []).map(v => ({
+    setSellers((data || []).map(v => ({
       id: v.id,
       name: v.nome,
-      email: v.email || '',
       createdAt: v.criado_em,
-    }));
-
-    setSellers(mappedSellers);
+    })));
   }, []);
 
-  // Fetch results from Supabase
-  const fetchResults = useCallback(async () => {
+  const fetchRecords = useCallback(async () => {
     const { data, error } = await supabase
-      .from('resultados')
-      .select(`
-        *,
-        vendedores (
-          nome
-        )
-      `)
-      .order('criado_em', { ascending: false });
+      .from('resultados_vendas')
+      .select(`*, vendedores (nome)`)
+      .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching results:', error);
+      console.error('Error fetching records:', error);
       return;
     }
 
-    const mappedResults: SalesResult[] = (data || []).map(r => {
-      const opportunities = r.oportunidades || 0;
-      const sales = r.vendas || 0;
-      const conversionRate = opportunities > 0 
-        ? Math.round((sales / opportunities) * 100 * 100) / 100 
-        : 0;
-
-      return {
-        id: r.id,
-        sellerId: r.vendedor_id,
-        sellerName: r.vendedores?.nome || 'Desconhecido',
-        startDate: r.periodo_inicio,
-        endDate: r.periodo_fim,
-        opportunities,
-        sales,
-        conversionRate,
-        averageConversionTime: Number(r.tempo_medio_conversao) || 0,
-        revenue: Number(r.receita) || 0,
-        importedAt: r.criado_em,
-        dataSource: (r.origem_dos_dados === 'csv' ? 'csv' : 'manual') as 'csv' | 'manual',
-      };
-    });
-
-    setResults(mappedResults);
+    setRecords((data || []).map(r => ({
+      id: r.id,
+      sellerId: r.vendedor_id,
+      sellerName: (r.vendedores as any)?.nome || 'Desconhecido',
+      dataResultado: r.data_resultado,
+      tipoLead: r.tipo_lead as 'interno' | 'externo',
+      oportunidades: r.oportunidades != null ? Number(r.oportunidades) : null,
+      vendas: Number(r.vendas) || 0,
+      receita: Number(r.receita) || 0,
+      tempoMedio: r.tempo_medio != null ? Number(r.tempo_medio) : null,
+      createdAt: r.created_at,
+    })));
   }, []);
 
-  // Initial load
   useEffect(() => {
-    const loadData = async () => {
+    const load = async () => {
       setLoading(true);
-      await Promise.all([fetchSellers(), fetchResults()]);
+      await Promise.all([fetchSellers(), fetchRecords()]);
       setLoading(false);
     };
-    loadData();
-  }, [fetchSellers, fetchResults]);
+    load();
+  }, [fetchSellers, fetchRecords]);
 
-  const addSeller = useCallback(async (name: string, email: string) => {
+  const addSeller = useCallback(async (name: string) => {
     const { data, error } = await supabase
       .from('vendedores')
-      .insert({
-        nome: name,
-        email: email || null,
-      })
+      .insert({ nome: name })
       .select()
       .single();
 
-    if (error) {
-      console.error('Error adding seller:', error);
-      throw error;
-    }
+    if (error) throw error;
 
-    const newSeller: Seller = {
-      id: data.id,
-      name: data.nome,
-      email: data.email || '',
-      createdAt: data.criado_em,
-    };
-
+    const newSeller: Seller = { id: data.id, name: data.nome, createdAt: data.criado_em };
     setSellers(prev => [newSeller, ...prev]);
     return newSeller;
   }, []);
 
   const deleteSeller = useCallback(async (id: string) => {
-    const { error } = await supabase
-      .from('vendedores')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error deleting seller:', error);
-      throw error;
-    }
-
+    const { error } = await supabase.from('vendedores').delete().eq('id', id);
+    if (error) throw error;
     setSellers(prev => prev.filter(s => s.id !== id));
   }, []);
 
-  const addResult = useCallback(async (result: Omit<SalesResult, 'id' | 'importedAt' | 'conversionRate'>) => {
+  const addRecord = useCallback(async (record: Omit<SalesRecord, 'id' | 'createdAt' | 'sellerName'>) => {
     const { data, error } = await supabase
-      .from('resultados')
+      .from('resultados_vendas')
       .insert({
-        vendedor_id: result.sellerId,
-        periodo_inicio: result.startDate,
-        periodo_fim: result.endDate,
-        oportunidades: result.opportunities,
-        vendas: result.sales,
-        tempo_medio_conversao: result.averageConversionTime,
-        receita: result.revenue,
-        origem_dos_dados: result.dataSource || 'manual',
+        vendedor_id: record.sellerId,
+        data_resultado: record.dataResultado,
+        tipo_lead: record.tipoLead,
+        oportunidades: record.oportunidades,
+        vendas: record.vendas,
+        receita: record.receita,
+        tempo_medio: record.tempoMedio,
       })
-      .select(`
-        *,
-        vendedores (
-          nome
-        )
-      `)
+      .select(`*, vendedores (nome)`)
       .single();
 
-    if (error) {
-      console.error('Error adding result:', error);
-      throw error;
-    }
+    if (error) throw error;
 
-    const opportunities = data.oportunidades || 0;
-    const sales = data.vendas || 0;
-    const conversionRate = opportunities > 0 
-      ? Math.round((sales / opportunities) * 100 * 100) / 100 
-      : 0;
-
-    const newResult: SalesResult = {
+    const newRecord: SalesRecord = {
       id: data.id,
       sellerId: data.vendedor_id,
-      sellerName: data.vendedores?.nome || 'Desconhecido',
-      startDate: data.periodo_inicio,
-      endDate: data.periodo_fim,
-      opportunities,
-      sales,
-      conversionRate,
-      averageConversionTime: Number(data.tempo_medio_conversao) || 0,
-      revenue: Number(data.receita) || 0,
-      importedAt: data.criado_em,
-      dataSource: (data.origem_dos_dados === 'csv' ? 'csv' : 'manual') as 'csv' | 'manual',
+      sellerName: (data.vendedores as any)?.nome || 'Desconhecido',
+      dataResultado: data.data_resultado,
+      tipoLead: data.tipo_lead as 'interno' | 'externo',
+      oportunidades: data.oportunidades != null ? Number(data.oportunidades) : null,
+      vendas: Number(data.vendas) || 0,
+      receita: Number(data.receita) || 0,
+      tempoMedio: data.tempo_medio != null ? Number(data.tempo_medio) : null,
+      createdAt: data.created_at,
     };
 
-    setResults(prev => [newResult, ...prev]);
-    return newResult;
+    setRecords(prev => [newRecord, ...prev]);
+    return newRecord;
   }, []);
 
-  const updateResult = useCallback(async (id: string, updates: Partial<SalesResult>) => {
+  const deleteRecord = useCallback(async (id: string) => {
+    const { error } = await supabase.from('resultados_vendas').delete().eq('id', id);
+    if (error) throw error;
+    setRecords(prev => prev.filter(r => r.id !== id));
+  }, []);
+
+  const updateRecord = useCallback(async (id: string, updates: Partial<Pick<SalesRecord, 'vendas' | 'receita' | 'oportunidades' | 'tempoMedio'>>) => {
     const updateData: Record<string, unknown> = {};
-    
-    if (updates.opportunities !== undefined) updateData.oportunidades = updates.opportunities;
-    if (updates.sales !== undefined) updateData.vendas = updates.sales;
-    if (updates.averageConversionTime !== undefined) updateData.tempo_medio_conversao = updates.averageConversionTime;
-    if (updates.revenue !== undefined) updateData.receita = updates.revenue;
+    if (updates.vendas !== undefined) updateData.vendas = updates.vendas;
+    if (updates.receita !== undefined) updateData.receita = updates.receita;
+    if (updates.oportunidades !== undefined) updateData.oportunidades = updates.oportunidades;
+    if (updates.tempoMedio !== undefined) updateData.tempo_medio = updates.tempoMedio;
 
-    const { error } = await supabase
-      .from('resultados')
-      .update(updateData)
-      .eq('id', id);
+    const { error } = await supabase.from('resultados_vendas').update(updateData).eq('id', id);
+    if (error) throw error;
 
-    if (error) {
-      console.error('Error updating result:', error);
-      throw error;
-    }
-
-    setResults(prev => prev.map(r => {
-      if (r.id === id) {
-        const updated = { ...r, ...updates };
-        if (updates.opportunities !== undefined || updates.sales !== undefined) {
-          updated.conversionRate = updated.opportunities > 0 
-            ? Math.round((updated.sales / updated.opportunities) * 100 * 100) / 100
-            : 0;
-        }
-        return updated;
-      }
-      return r;
-    }));
+    setRecords(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
   }, []);
 
-  const deleteResult = useCallback(async (id: string) => {
-    const { error } = await supabase
-      .from('resultados')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error deleting result:', error);
-      throw error;
-    }
-
-    setResults(prev => prev.filter(r => r.id !== id));
-  }, []);
-
-  const getFilteredResults = useCallback((sellerId: string | 'all', startDate: string, endDate: string) => {
-    return results.filter(r => {
+  const getFilteredRecords = useCallback((sellerId: string | 'all', startDate: string, endDate: string) => {
+    return records.filter(r => {
       const matchesSeller = sellerId === 'all' || r.sellerId === sellerId;
-      const matchesDate = r.startDate >= startDate && r.endDate <= endDate;
+      const matchesDate = r.dataResultado >= startDate && r.dataResultado <= endDate;
       return matchesSeller && matchesDate;
     });
-  }, [results]);
-
-  const getAggregatedMetrics = useCallback((filteredResults: SalesResult[]) => {
-    if (filteredResults.length === 0) {
-      return {
-        totalOpportunities: 0,
-        totalSales: 0,
-        conversionRate: 0,
-        totalRevenue: 0,
-        avgConversionTime: 0,
-      };
-    }
-
-    const totalOpportunities = filteredResults.reduce((sum, r) => sum + r.opportunities, 0);
-    const totalSales = filteredResults.reduce((sum, r) => sum + r.sales, 0);
-    const totalRevenue = filteredResults.reduce((sum, r) => sum + r.revenue, 0);
-    const avgConversionTime = filteredResults.reduce((sum, r) => sum + r.averageConversionTime, 0) / filteredResults.length;
-
-    return {
-      totalOpportunities,
-      totalSales,
-      conversionRate: totalOpportunities > 0 ? Math.round((totalSales / totalOpportunities) * 100 * 100) / 100 : 0,
-      totalRevenue,
-      avgConversionTime: Math.round(avgConversionTime * 10) / 10,
-    };
-  }, []);
+  }, [records]);
 
   const refreshData = useCallback(async () => {
-    await Promise.all([fetchSellers(), fetchResults()]);
-  }, [fetchSellers, fetchResults]);
+    await Promise.all([fetchSellers(), fetchRecords()]);
+  }, [fetchSellers, fetchRecords]);
 
   return {
     sellers,
-    results,
+    records,
     loading,
     addSeller,
     deleteSeller,
-    addResult,
-    updateResult,
-    deleteResult,
-    getFilteredResults,
-    getAggregatedMetrics,
+    addRecord,
+    deleteRecord,
+    updateRecord,
+    getFilteredRecords,
     refreshData,
   };
 }

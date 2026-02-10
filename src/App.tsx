@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Sellers from "./pages/Sellers";
 import ImportResults from "./pages/ImportResults";
 import History from "./pages/History";
+import Commission from "./pages/Commission";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
           <Route path="/vendedores" element={<Sellers />} />
           <Route path="/importar" element={<ImportResults />} />
           <Route path="/historico" element={<History />} />
+          <Route path="/comissionamento" element={<Commission />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

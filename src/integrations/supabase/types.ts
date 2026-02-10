@@ -14,46 +14,43 @@ export type Database = {
   }
   public: {
     Tables: {
-      resultados: {
+      resultados_vendas: {
         Row: {
-          criado_em: string
+          created_at: string
+          data_resultado: string
           id: string
-          oportunidades: number
-          origem_dos_dados: string
-          periodo_fim: string
-          periodo_inicio: string
+          oportunidades: number | null
           receita: number
-          tempo_medio_conversao: number
+          tempo_medio: number | null
+          tipo_lead: string
           vendas: number
           vendedor_id: string
         }
         Insert: {
-          criado_em?: string
+          created_at?: string
+          data_resultado: string
           id?: string
-          oportunidades?: number
-          origem_dos_dados?: string
-          periodo_fim: string
-          periodo_inicio: string
+          oportunidades?: number | null
           receita?: number
-          tempo_medio_conversao?: number
+          tempo_medio?: number | null
+          tipo_lead: string
           vendas?: number
           vendedor_id: string
         }
         Update: {
-          criado_em?: string
+          created_at?: string
+          data_resultado?: string
           id?: string
-          oportunidades?: number
-          origem_dos_dados?: string
-          periodo_fim?: string
-          periodo_inicio?: string
+          oportunidades?: number | null
           receita?: number
-          tempo_medio_conversao?: number
+          tempo_medio?: number | null
+          tipo_lead?: string
           vendas?: number
           vendedor_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "resultados_vendedor_id_fkey"
+            foreignKeyName: "resultados_vendas_vendedor_id_fkey"
             columns: ["vendedor_id"]
             isOneToOne: false
             referencedRelation: "vendedores"
@@ -64,19 +61,16 @@ export type Database = {
       vendedores: {
         Row: {
           criado_em: string
-          email: string | null
           id: string
           nome: string
         }
         Insert: {
           criado_em?: string
-          email?: string | null
           id?: string
           nome: string
         }
         Update: {
           criado_em?: string
-          email?: string | null
           id?: string
           nome?: string
         }
