@@ -120,7 +120,12 @@ export function useSalesData() {
   }, []);
 
   const updateRecord = useCallback(async (id: string, updates: Partial<Pick<SalesRecord, 'vendas' | 'receita' | 'oportunidades' | 'tempoMedio'>>) => {
-    const updateData: Record<string, unknown> = {};
+    const updateData: {
+      vendas?: number;
+      receita?: number;
+      oportunidades?: number | null;
+      tempo_medio?: number | null;
+    } = {};
     if (updates.vendas !== undefined) updateData.vendas = updates.vendas;
     if (updates.receita !== undefined) updateData.receita = updates.receita;
     if (updates.oportunidades !== undefined) updateData.oportunidades = updates.oportunidades;
